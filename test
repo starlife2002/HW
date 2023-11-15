@@ -3,19 +3,24 @@ import matplotlib.pyplot as plt
 
 class Packet:
     def __init__(self, id, destination):
+        # Khởi tạo đối tượng Packet với ID và đích đến
         self.id = id
         self.destination = destination
 
 class Switch:
     def __init__(self, num_inputs, num_outputs):
+        # Khởi tạo switch với số lượng cổng vào và ra đã cho
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
+        # Tạo hàng đợi đầu vào và đầu ra cho từng cổng
         self.input_queues = [[] for _ in range(num_inputs)]
         self.output_queues = [[] for _ in range(num_outputs)]
+        # Khởi tạo bộ đếm cho số lượng gói bị chặn và tổng số gói
         self.blocked_packets = 0
         self.total_packets = 0
 
     def generate_packets(self):
+        # Tạo gói tin với đích đến ngẫu nhiên cho mỗi cổng vào
         packets = []
         for i in range(self.num_inputs):
             destination = random.randint(0, self.num_outputs - 1)
@@ -23,42 +28,56 @@ class Switch:
         return packets
 
     def simulate(self, num_packets, time_slots):
+        # Tạo gói tin và thêm chúng vào hàng đợi đầu vào
         for _ in range(num_packets):
             packets = self.generate_packets()
             for i in range(self.num_inputs):
                 self.input_queues[i].extend([(packet.id, packet.destination) for packet in packets if packet.id == i])
 
+        # Xử lý gói tin trong số lượng khe thời gian xác định
         for _ in range(time_slots):
             self.process_packets()
 
     def process_packets(self):
+        # Xử lý gói tin từ hàng đợi đầu vào đến hàng đợi đầu ra
         for i in range(self.num_inputs):
             if self.input_queues[i]:
-                input_queue = sorted(self.input_queues[i], key=lambda x: (self.output_queues[x[1]], x[0]))
+                # Sắp xếp hàng đợi đầu vào dựa trên tình trạng của hàng đợi đầu ra và ID của gói tin
+                input_queue = sorted(self.input_queues[i], key=lambda x: (len(self.output_queues[x[1]]), x[0]))
                 packet_id, destination = input_queue.pop(0)
+                # Kiểm tra xem hàng đợi đầu ra đến đích có sẵn không
                 if packet_id not in self.output_queues[destination]:
                     self.output_queues[destination].append(packet_id)
                 else:
+                    # Nếu hàng đợi đầu ra bị chặn, tăng giá trị blocked_packets và hiển thị thông tin
                     self.blocked_packets += 1
+                    
                 self.input_queues[i] = input_queue
 
+        # Xử lý gói tin trong hàng đợi đầu ra
         for i in range(self.num_outputs):
             if self.output_queues[i]:
+                # Loại bỏ gói tin khỏi hàng đợi đầu ra và tăng giá trị total_packets
                 packet_id = self.output_queues[i].pop(0)
                 self.total_packets += 1
+               
 
 if __name__ == "__main__":
     fabric_sizes = [1, 2, 4, 8, 16, 32, 64]
     blocking_rates = []
 
+    # Chạy mô phỏng cho các kích thước switch khác nhau
     for fabric_size in fabric_sizes:
+        print(f"\nFabric Size: {fabric_size}")
         switch = Switch(fabric_size, fabric_size)
         switch.simulate(1000, 1000)
         blocking_rate = (switch.blocked_packets / switch.total_packets) * 100
         blocking_rates.append(blocking_rate)
-        print(f"Fabric Size: {fabric_size}, Blocking Rate: {blocking_rate:.2f}%")
+        print(f"Blocking Rate: {blocking_rate:.2f}%")
+        print(f"Total Blocking Rate: {switch.blocked_packets}")
+        print(f"Bloking Count: {switch.total_packets}")
 
-    # Plotting the results
+    # Vẽ đồ thị kết quả
     plt.plot(fabric_sizes, blocking_rates, marker='o')
     plt.title('Blocking Rate vs. Fabric Size')
     plt.xlabel('Fabric Size')
